@@ -1,4 +1,5 @@
 import React from 'react';
+import {useRouter} from 'next/router';
 import {Form, Field} from 'react-final-form';
 import TextFieldAdapter from '../fields/TextFieldAdapter';
 import Button from '@mui/material/Button';
@@ -6,23 +7,15 @@ import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
 
 const required = (value: any) => (value ? undefined : 'Required');
 
-const SignUpForm: React.FC = () => {
+interface SignUpFormProps {
+  onSubmit: (values: any) => void;
+}
+
+const SignUpForm: React.FC<SignUpFormProps> = ({onSubmit}) => {
+  const router = useRouter();
+
   return (
-    <Form
-      initialValues={{}}
-      onSubmit={values => {
-        const auth = getAuth();
-        createUserWithEmailAndPassword(auth, values.email, values.password)
-          .then(userCredential => {
-            const user = userCredential.user;
-            console.log(user);
-          })
-          .catch(error => {
-            const errorCode = error.code;
-            const errorMessage = error.message;
-          });
-      }}
-    >
+    <Form initialValues={{}} onSubmit={onSubmit}>
       {({handleSubmit, pristine, form, values, submitting}) => (
         <form onSubmit={handleSubmit}>
           <div>

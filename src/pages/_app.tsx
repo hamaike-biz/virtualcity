@@ -1,10 +1,12 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
+import {Provider, useDispatch} from 'react-redux';
 import type {AppProps} from 'next/app';
-import {initializeApp} from 'firebase/app';
+import {FirebaseApp, initializeApp} from 'firebase/app';
+import {getAuth, onAuthStateChanged} from 'firebase/auth';
 import {firebaseConfig} from '../configs/firebaseConfig';
 import '../../styles/globals.css';
 import {store} from '../app/store';
-import {Provider} from 'react-redux';
+import {setUser} from '../actions/user/action';
 
 function MyApp({Component, pageProps}: AppProps) {
   useEffect(() => {

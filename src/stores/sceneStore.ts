@@ -15,6 +15,7 @@ class SceneStore {
   frameCount: number;
   mouse: Vector2;
   mainCamera: PerspectiveCamera;
+  isMouseOverUi: boolean;
 
   constructor() {
     this.mainPlanes = [];
@@ -26,6 +27,7 @@ class SceneStore {
       0.3,
       1000
     );
+    this.isMouseOverUi = false;
   }
 
   addMainPlane = (plane: Mesh) => {

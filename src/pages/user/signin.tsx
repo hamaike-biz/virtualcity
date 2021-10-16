@@ -6,7 +6,7 @@ import SignUpForm from '../../components/forms/SignUpForm';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-const SignUp = () => {
+const SignIn = () => {
   const router = useRouter();
 
   return (
@@ -30,4 +30,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default SignIn;

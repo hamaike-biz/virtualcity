@@ -1,4 +1,6 @@
-import React, {useRef, useState, useEffect, FC} from 'react';
+import React, {useRef, useState, useEffect, FC, MouseEventHandler} from 'react';
+import {useDispatch} from 'react-redux';
+import {requestPurchaseLand} from '../../../actions/land/action';
 import {OrbitControls, Stats} from '@react-three/drei';
 import {
   Canvas,
@@ -42,6 +44,8 @@ import {
 } from '../../../utils/three/threeFuncs';
 import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {SimplifyModifier} from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import styles from './index.module.scss';
+import Button from '@mui/material/Button';
 
 interface PlaneProps {
   sceneStore: SceneStore;
@@ -57,10 +61,9 @@ const CellSelector: FC<PlaneProps> = ({sceneStore}) => {
   const onPointerDown = (e: PointerEvent) => {
     const mouse = getMouseVector(e);
     const planes = sceneStore.getMainPlanes();
-    console.log(planes);
     raycaster.setFromCamera(mouse, sceneStore.mainCamera);
     const intersects = raycaster.intersectObjects(planes, false);
-    if (intersects.length > 0) {
+    if (intersects.length > 0 && !sceneStore.isMouseOverUi) {
       const intersect = intersects[0];
       console.log(intersects);
 
@@ -271,6 +274,65 @@ const LandCanvas = () => {
         {/*<BuildingGenerator />*/}
       </Canvas>
       <Stats showPanel={0} className="stats" />
+      <UserInterface sceneStore={sceneStoreRef.current} />
+    </div>
+  );
+};
+
+interface UserInterfaceProps {
+  sceneStore: SceneStore;
+}
+
+const UserInterface: FC<UserInterfaceProps> = ({sceneStore}) => {
+  const dispatch = useDispatch();
+
+  const handleOnClick = (e: any) => {
+    e.stopPropagation();
+    const cells = sceneStore.mainPlanes.filter((mesh, index) => {
+      return mesh.name !== 'mainPlane';
+    });
+    const normalizedCells = cells.map((mesh, index) => {
+      return {x: Math.ceil(mesh.position.x), z: Math.ceil(mesh.position.z)};
+    });
+    console.log(cells);
+    console.log(normalizedCells);
+    if (normalizedCells.length > 0) {
+      const first = normalizedCells[0];
+      let zoneX = 0;
+      let zoneZ = 0;
+      if (first.x >= 0) {
+        zoneX = Math.ceil(first.x / 50);
+      } else {
+        zoneX = Math.floor(first.x / 50);
+      }
+      if (first.z >= 0) {
+        zoneZ = Math.ceil(first.z / 50);
+      } else {
+        zoneZ = Math.floor(first.z / 50);
+      }
+      // const zoneX = Math.ceil(first.x / 50);
+      // const zoneZ = Math.ceil(first.z / 50);
+      console.log(zoneX, zoneZ);
+      dispatch(
+        requestPurchaseLand({
+          positions: normalizedCells,
+          zone: `${zoneX},${zoneZ}`
+        })
+      );
+    }
+  };
+
+  return (
+    <div className={styles.userInterfaceContainer}>
+      <Button
+        variant="contained"
+        size="large"
+        onClick={handleOnClick}
+        onMouseOver={() => (sceneStore.isMouseOverUi = true)}
+        onMouseLeave={() => (sceneStore.isMouseOverUi = false)}
+      >
+        購入
+      </Button>
     </div>
   );
 };
