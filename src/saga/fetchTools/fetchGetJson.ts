@@ -54,7 +54,7 @@ const getMain = (apiName: string, headers: HeadersInit) => {
     });
 };
 
-const responseHandler = (status: number, data: object) => {
+const responseHandler = (status: number, data: any) => {
   console.log(data, status);
   return {data, status};
 };

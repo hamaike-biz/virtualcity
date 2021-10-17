@@ -44,8 +44,11 @@ import {
 } from '../../../utils/three/threeFuncs';
 import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {SimplifyModifier} from 'three/examples/jsm/modifiers/SimplifyModifier.js';
-import styles from './index.module.scss';
+import styles from '../canvas.module.scss';
 import Button from '@mui/material/Button';
+import AxesHelperComponent from '../../../components/three/AxesHelper';
+import {getZoneFromPos} from '../../../threeFuncs/area';
+import {ZONE_SPLIT_STR} from '../../../constants/three';
 
 interface PlaneProps {
   sceneStore: SceneStore;
@@ -272,6 +275,7 @@ const LandCanvas = () => {
         <CellSelector sceneStore={sceneStoreRef.current} />
         <Camera sceneStore={sceneStoreRef.current} />
         {/*<BuildingGenerator />*/}
+        <AxesHelperComponent />
       </Canvas>
       <Stats showPanel={0} className="stats" />
       <UserInterface sceneStore={sceneStoreRef.current} />
@@ -298,25 +302,12 @@ const UserInterface: FC<UserInterfaceProps> = ({sceneStore}) => {
     console.log(normalizedCells);
     if (normalizedCells.length > 0) {
       const first = normalizedCells[0];
-      let zoneX = 0;
-      let zoneZ = 0;
-      if (first.x >= 0) {
-        zoneX = Math.ceil(first.x / 50);
-      } else {
-        zoneX = Math.floor(first.x / 50);
-      }
-      if (first.z >= 0) {
-        zoneZ = Math.ceil(first.z / 50);
-      } else {
-        zoneZ = Math.floor(first.z / 50);
-      }
-      // const zoneX = Math.ceil(first.x / 50);
-      // const zoneZ = Math.ceil(first.z / 50);
+      const [zoneX, zoneZ] = getZoneFromPos(first.x, first.z);
       console.log(zoneX, zoneZ);
       dispatch(
         requestPurchaseLand({
           positions: normalizedCells,
-          zone: `${zoneX},${zoneZ}`
+          zone: `${zoneX}${ZONE_SPLIT_STR}${zoneZ}`
         })
       );
     }

@@ -7,6 +7,7 @@ import {
   Line,
   PerspectiveCamera
 } from 'three';
+import {ActiveKeyStateValues} from './models';
 
 class SceneStore {
   mainPlane: Mesh | undefined;
@@ -16,6 +17,13 @@ class SceneStore {
   mouse: Vector2;
   mainCamera: PerspectiveCamera;
   isMouseOverUi: boolean;
+  currentZone: string | undefined;
+
+  // cameras
+  private camera: PerspectiveCamera | undefined;
+  private cameraParent: Mesh | undefined;
+  private lookAtTarget: Mesh | undefined;
+  event: ActiveKeyStateValues;
 
   constructor() {
     this.mainPlanes = [];
@@ -28,6 +36,12 @@ class SceneStore {
       1000
     );
     this.isMouseOverUi = false;
+    this.event = {
+      ArrowUp: false,
+      ArrowRight: false,
+      ArrowLeft: false,
+      ArrowDown: false
+    };
   }
 
   addMainPlane = (plane: Mesh) => {
@@ -44,8 +58,22 @@ class SceneStore {
     return this.frameCount;
   };
 
-  getMouse = () => {
-    return this.mouse;
+  setCameras = (
+    defaultCamera: PerspectiveCamera,
+    cameraParent: Mesh,
+    lookAtTarget: Mesh
+  ) => {
+    this.camera = defaultCamera;
+    this.cameraParent = cameraParent;
+    this.lookAtTarget = lookAtTarget;
+  };
+
+  getCameras = () => {
+    return {
+      camera: this.camera,
+      cameraParent: this.cameraParent,
+      lookAtTarget: this.lookAtTarget
+    };
   };
 }
 

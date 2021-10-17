@@ -28,7 +28,8 @@
     "sass": "^1.43.2",
     "store": "^2.0.12",
     "three": "^0.127.0",
-    "typesafe-actions": "^5.1.0"
+    "typesafe-actions": "^5.1.0",
+    "zustand": "^3.5.13"
   },
   "devDependencies": {
     "@types/react": "17.0.27",
