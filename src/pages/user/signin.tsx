@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {useRouter} from 'next/router';
-import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
+import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import {Form, Field} from 'react-final-form';
 import SignUpForm from '../../components/forms/SignUpForm';
 import Button from '@mui/material/Button';
@@ -14,7 +14,7 @@ const SignIn = () => {
       <SignUpForm
         onSubmit={(values: any) => {
           const auth = getAuth();
-          createUserWithEmailAndPassword(auth, values.email, values.password)
+          signInWithEmailAndPassword(auth, values.email, values.password)
             .then(userCredential => {
               const user = userCredential.user;
               console.log(user);

@@ -38,7 +38,7 @@ function* getZonePositions(action: ReturnType<typeof requestZonePositions>) {
 
   if (!(results instanceof Promise)) {
     console.log(results);
-    yield put(successZonePositions(results.data.detail));
+    yield put(successZonePositions({[action.payload]: results.data.detail}));
   }
 }
 

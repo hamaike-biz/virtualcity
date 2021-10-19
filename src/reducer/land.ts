@@ -4,7 +4,7 @@ import {CommonActionTypeModel} from '../models';
 import {SUCCESS_ZONE_POSITIONS} from '../actions/land/action';
 
 const initialState: LandState = {
-  positions: undefined
+  zones: undefined
 };
 
 const land: Reducer<LandState, CommonActionTypeModel> = (
@@ -15,7 +15,7 @@ const land: Reducer<LandState, CommonActionTypeModel> = (
     case SUCCESS_ZONE_POSITIONS:
       return {
         ...state,
-        positions: action.payload
+        zones: {...state.zones, ...action.payload}
       };
     default:
       return state;

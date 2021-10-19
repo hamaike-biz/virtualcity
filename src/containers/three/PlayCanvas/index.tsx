@@ -33,7 +33,7 @@ import {
   setCurrentZone
 } from '../../../utils/localStorageManager';
 import {getZoneFromPos, makePosFromArea} from '../../../threeFuncs/area';
-import {Detail, RootState} from '../../../models';
+import {Detail, RootState, ZonesState} from '../../../models';
 import AxesHelperComponent from '../../../components/three/AxesHelper';
 import {
   getBuildingMeshFromShape,
@@ -45,27 +45,35 @@ import {ZONE_SPLIT_STR} from '../../../constants/three';
 import {useStore} from '../../../stores/three/play';
 
 interface BuildingGeneratorProps {
-  positions: Detail[];
+  zones: ZonesState;
+  sceneStore: SceneStore;
 }
 
-const BuildingGenerator: FC<BuildingGeneratorProps> = ({positions}) => {
+const BuildingGenerator: FC<BuildingGeneratorProps> = ({zones, sceneStore}) => {
   // 複数のジオメトリから簡素な家を生成する機能
   const {camera, raycaster, scene, set} = useThree();
 
-  console.log(positions);
-
   useEffect(() => {
-    positions.forEach(item => {
-      const mergedGeometry = getMergedGeometry(item);
-      const vec2ListForShape = getShapePathFromEdge(mergedGeometry);
-      const shapePath = makeShapePath(vec2ListForShape);
-      const shape = makeShape(shapePath);
-      if (shape) {
-        const buildingMesh = getBuildingMeshFromShape(shape);
-        scene.add(buildingMesh);
+    Object.keys(zones).forEach(zoneName => {
+      if (sceneStore.loadedZoneNames.includes(zoneName)) {
+        // pass
+      } else {
+        console.log('zones', zones);
+        const zone = zones[zoneName];
+        zone.forEach(item => {
+          const mergedGeometry = getMergedGeometry(item);
+          const vec2ListForShape = getShapePathFromEdge(mergedGeometry);
+          const shapePath = makeShapePath(vec2ListForShape);
+          const shape = makeShape(shapePath);
+          if (shape) {
+            const buildingMesh = getBuildingMeshFromShape(shape);
+            scene.add(buildingMesh);
+          }
+        });
+        sceneStore.loadedZoneNames.push(zoneName);
       }
     });
-  }, []);
+  }, [zones]);
 
   return <></>;
 };
@@ -104,7 +112,7 @@ const makeShape = (vec2List: Vector2[]) => {
 
 const Loader = () => {
   const dispatch = useDispatch();
-  const {positions} = useSelector((state: RootState) => state.land);
+  const {zones} = useSelector((state: RootState) => state.land);
   const [spawnPoint, setSpawnPoint] = useState<Vector3 | undefined>();
 
   useEffect(() => {
@@ -113,17 +121,20 @@ const Loader = () => {
     dispatch(requestZonePositions(currentZone));
   }, []);
 
-  if (!positions || !spawnPoint) return <></>;
+  console.log(zones, spawnPoint);
 
-  return <PlayCanvas positions={positions} spawnPoint={spawnPoint} />;
+  if (!zones || !spawnPoint) return <></>;
+
+  return <PlayCanvas zones={zones} spawnPoint={spawnPoint} />;
 };
 
 interface PlayCanvasProps {
-  positions: Detail[];
+  zones: ZonesState;
   spawnPoint: Vector3;
 }
 
-const PlayCanvas: FC<PlayCanvasProps> = ({positions, spawnPoint}) => {
+const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
+  const dispatch = useDispatch();
   const sceneStoreRef = useRef<SceneStore>(new SceneStore());
 
   useEffect(() => {
@@ -138,6 +149,14 @@ const PlayCanvas: FC<PlayCanvasProps> = ({positions, spawnPoint}) => {
     });
   }, []);
 
+  const onEnterChangeZone = (currentZone: string) => {
+    if (sceneStoreRef.current.loadedZoneNames.includes(currentZone)) {
+      console.info('このエリアは既に取得済です。');
+    } else {
+      dispatch(requestZonePositions(currentZone));
+    }
+  };
+
   return (
     <div>
       <Canvas style={{position: 'absolute'}}>
@@ -149,9 +168,12 @@ const PlayCanvas: FC<PlayCanvasProps> = ({positions, spawnPoint}) => {
           initialPos={[spawnPoint.x, 1, spawnPoint.z]}
         />
         <fog attach="fog" args={['white', 20, 50]} />
-        <BuildingGenerator positions={positions} />
+        <BuildingGenerator zones={zones} sceneStore={sceneStoreRef.current} />
         <AxesHelperComponent />
-        <MainLoop sceneStore={sceneStoreRef.current} />
+        <MainLoop
+          sceneStore={sceneStoreRef.current}
+          onEnterChangeZone={onEnterChangeZone}
+        />
       </Canvas>
       <Stats showPanel={0} className="stats" />
       <UserInterface sceneStore={sceneStoreRef.current} />
@@ -161,16 +183,16 @@ const PlayCanvas: FC<PlayCanvasProps> = ({positions, spawnPoint}) => {
 
 interface MainLoopProps {
   sceneStore: SceneStore;
+  onEnterChangeZone: (currentZone: string) => void;
 }
 
-const MainLoop: FC<MainLoopProps> = ({sceneStore}) => {
+const MainLoop: FC<MainLoopProps> = ({sceneStore, onEnterChangeZone}) => {
   const setCurrentZoneToStore = useStore(state => state.setCurrentZone);
   const currentZone = useStore(state => state.currentZone);
 
   useEffect(() => {
     if (currentZone) {
-      console.log('currentZone', currentZone);
-      // dispatch(requestZonePositions(currentZone));
+      onEnterChangeZone(currentZone);
     }
   }, [currentZone]);
 

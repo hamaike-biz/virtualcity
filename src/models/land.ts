@@ -9,6 +9,10 @@ export interface Detail {
   zone: string;
 }
 
+export interface ZonesState {
+  [key: string]: Detail[];
+}
+
 export interface LandState {
-  positions: undefined | Detail[];
+  zones: undefined | ZonesState;
 }

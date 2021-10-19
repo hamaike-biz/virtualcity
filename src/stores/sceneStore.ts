@@ -25,6 +25,9 @@ class SceneStore {
   private lookAtTarget: Mesh | undefined;
   event: ActiveKeyStateValues;
 
+  // zone
+  loadedZoneNames: string[];
+
   constructor() {
     this.mainPlanes = [];
     this.frameCount = 0;
@@ -42,6 +45,7 @@ class SceneStore {
       ArrowLeft: false,
       ArrowDown: false
     };
+    this.loadedZoneNames = [];
   }
 
   addMainPlane = (plane: Mesh) => {
