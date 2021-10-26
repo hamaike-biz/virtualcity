@@ -1,9 +1,5 @@
 import React, {useRef, useState, useEffect, FC, MouseEventHandler} from 'react';
 import {useDispatch, useSelector} from 'react-redux';
-import {
-  requestPurchaseLand,
-  requestZonePositions
-} from '../../../actions/land/action';
 import {OrbitControls, Stats} from '@react-three/drei';
 import {
   Canvas,
@@ -14,19 +10,30 @@ import {
   addEffect,
   addAfterEffect
 } from '@react-three/fiber';
-import {Shape, Vector3, Vector2} from 'three';
-import SceneStore from '../../../stores/sceneStore';
+import {OutlinePass} from 'three/examples/jsm/postprocessing/OutlinePass.js';
+import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
 import {
-  getMouseVector,
-  getPlacingPlaneMaterials,
-  getPlane,
-  getRollOverMesh,
-  handleMouseMove
-} from '../../../utils/three/threeFuncs';
-import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {SimplifyModifier} from 'three/examples/jsm/modifiers/SimplifyModifier.js';
-import styles from '../canvas.module.scss';
+  Shape,
+  Vector3,
+  Vector2,
+  Box3,
+  Object3D,
+  TextureLoader,
+  RepeatWrapping,
+  Color
+} from 'three';
+
+// material-ui
 import Button from '@mui/material/Button';
+
+// components
+import {
+  requestPurchaseLand,
+  requestZonePositions
+} from '../../../actions/land/action';
+import SceneStore from '../../../stores/sceneStore';
+import styles from '../canvas.module.scss';
 import MainCamera from '../../../components/three/MainCamera';
 import {
   getCurrentZone,
@@ -43,9 +50,28 @@ import {
 import {mainLoop} from '../../../threeFuncs/loops';
 import {ZONE_SPLIT_STR} from '../../../constants/three';
 import {useStore} from '../../../stores/three/play';
+import useBuildings from '../../../hooks/three/useBuildings';
 
 interface BuildingGeneratorProps {
   zones: ZonesState;
+  sceneStore: SceneStore;
+}
+
+interface PlayCanvasProps {
+  zones: ZonesState;
+  spawnPoint: Vector3;
+}
+
+interface UserInterfaceProps {
+  sceneStore: SceneStore;
+}
+
+interface MainLoopProps {
+  sceneStore: SceneStore;
+  onEnterChangeZone: (currentZone: string) => void;
+}
+
+interface PostProcessingProps {
   sceneStore: SceneStore;
 }
 
@@ -67,7 +93,38 @@ const BuildingGenerator: FC<BuildingGeneratorProps> = ({zones, sceneStore}) => {
           const shape = makeShape(shapePath);
           if (shape) {
             const buildingMesh = getBuildingMeshFromShape(shape);
-            scene.add(buildingMesh);
+            buildingMesh.geometry.computeBoundingBox();
+            if (buildingMesh.geometry.boundingBox) {
+              const center = new Vector3();
+              buildingMesh.geometry.boundingBox.getCenter(center);
+              console.log('center', center);
+              const baseBuilding = sceneStore.getBuildingGLTF('building__a');
+              const clone = baseBuilding.clone();
+              let cloneBox = new Box3().setFromObject(clone);
+              let cloneSize = cloneBox.getSize(new Vector3());
+              let buildingMeshSize = buildingMesh.geometry.boundingBox.getSize(
+                new Vector3()
+              );
+              console.log('SIZE', cloneSize, buildingMeshSize);
+
+              const ratioX = buildingMeshSize.x / cloneSize.x;
+              const ratioZ = buildingMeshSize.y / cloneSize.y;
+
+              let scale = 1;
+
+              console.log('RATIO', ratioX, ratioZ);
+
+              if (ratioX > ratioZ) {
+                scale = ratioZ;
+              } else {
+                scale = ratioX;
+              }
+              console.log('SCALE', scale);
+              clone.scale.set(scale, scale, scale);
+              clone.position.set(center.x, 0, -center.y);
+              scene.add(clone);
+              console.log('### clone ###', clone);
+            }
           }
         });
         sceneStore.loadedZoneNames.push(zoneName);
@@ -128,14 +185,50 @@ const Loader = () => {
   return <PlayCanvas zones={zones} spawnPoint={spawnPoint} />;
 };
 
-interface PlayCanvasProps {
-  zones: ZonesState;
-  spawnPoint: Vector3;
-}
+const PostProcessing: FC<PostProcessingProps> = ({sceneStore}) => {
+  const {gl, scene, camera, mouse, raycaster, events, size} = useThree();
+
+  useEffect(() => {
+    if (camera.name === 'MainCamera') {
+      const composer = new EffectComposer(gl);
+      composer.addPass(new RenderPass(scene, camera));
+      const outlinePass = new OutlinePass(
+        new Vector2(size.width, size.height),
+        scene,
+        camera
+      );
+      outlinePass.visibleEdgeColor = new Color('#4400ff');
+      outlinePass.edgeStrength = 6.0;
+      composer.addPass(outlinePass);
+      const textureLoader = new TextureLoader();
+      textureLoader.load('/textures/tri_pattern.jpeg', function (texture) {
+        outlinePass.patternTexture = texture;
+        texture.wrapS = RepeatWrapping;
+        texture.wrapT = RepeatWrapping;
+      });
+      sceneStore.composer = composer;
+      sceneStore.outlinePass = outlinePass;
+    }
+  }, [camera]);
+
+  useEffect(() => {
+    // 毎フレーム、レンダリングが完了した後に実行される。
+    addAfterEffect(time => {
+      if (sceneStore.composer && sceneStore.outlinePass) {
+        sceneStore.composer.render();
+      }
+      return true;
+    });
+  }, []);
+
+  return <></>;
+};
 
 const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
   const dispatch = useDispatch();
   const sceneStoreRef = useRef<SceneStore>(new SceneStore());
+  const [isLoadedBuildings, setLoadedBuildings] = useState<boolean>(false);
+  const ref = useRef<undefined | Object3D>();
 
   useEffect(() => {
     // 毎フレーム、レンダリングが始まる前に実行される。
@@ -149,6 +242,8 @@ const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
     });
   }, []);
 
+  useBuildings(sceneStoreRef.current, setLoadedBuildings);
+
   const onEnterChangeZone = (currentZone: string) => {
     if (sceneStoreRef.current.loadedZoneNames.includes(currentZone)) {
       console.info('このエリアは既に取得済です。');
@@ -157,8 +252,14 @@ const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
     }
   };
 
+  if (!isLoadedBuildings || !ref) return <></>;
+
   return (
-    <div>
+    <div
+      onPointerMove={e => {
+        sceneStoreRef.current.onPointerMove();
+      }}
+    >
       <Canvas style={{position: 'absolute'}}>
         <ambientLight intensity={1} />
         <pointLight position={[10, 10, 10]} />
@@ -174,6 +275,7 @@ const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
           sceneStore={sceneStoreRef.current}
           onEnterChangeZone={onEnterChangeZone}
         />
+        <PostProcessing sceneStore={sceneStoreRef.current} />
       </Canvas>
       <Stats showPanel={0} className="stats" />
       <UserInterface sceneStore={sceneStoreRef.current} />
@@ -181,12 +283,10 @@ const PlayCanvas: FC<PlayCanvasProps> = ({zones, spawnPoint}) => {
   );
 };
 
-interface MainLoopProps {
-  sceneStore: SceneStore;
-  onEnterChangeZone: (currentZone: string) => void;
-}
-
 const MainLoop: FC<MainLoopProps> = ({sceneStore, onEnterChangeZone}) => {
+  const {gl, scene, camera, mouse, raycaster, events, onPointerMissed, set} =
+    useThree();
+  console.log(mouse);
   const setCurrentZoneToStore = useStore(state => state.setCurrentZone);
   const currentZone = useStore(state => state.currentZone);
 
@@ -197,6 +297,7 @@ const MainLoop: FC<MainLoopProps> = ({sceneStore, onEnterChangeZone}) => {
   }, [currentZone]);
 
   useFrame((state, delta) => {
+    sceneStore.copyState(state);
     mainLoop(sceneStore, delta, state.raycaster);
     if (sceneStore.getFrameCount() % 60 === 0) {
       const {cameraParent} = sceneStore.getCameras();
@@ -217,10 +318,6 @@ const MainLoop: FC<MainLoopProps> = ({sceneStore, onEnterChangeZone}) => {
 
   return <></>;
 };
-
-interface UserInterfaceProps {
-  sceneStore: SceneStore;
-}
 
 const UserInterface: FC<UserInterfaceProps> = ({sceneStore}) => {
   const dispatch = useDispatch();

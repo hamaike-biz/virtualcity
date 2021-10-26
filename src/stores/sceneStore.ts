@@ -5,9 +5,14 @@ import {
   Material,
   MeshBasicMaterial,
   Line,
-  PerspectiveCamera
+  PerspectiveCamera,
+  Scene,
+  Group
 } from 'three';
-import {ActiveKeyStateValues} from './models';
+// @ts-ignore
+import {OutlinePass} from 'postprocessing';
+import {ActiveKeyStateValues, BuildingsGLTF} from './models';
+import {RootState} from '@react-three/fiber';
 
 class SceneStore {
   mainPlane: Mesh | undefined;
@@ -18,6 +23,7 @@ class SceneStore {
   mainCamera: PerspectiveCamera;
   isMouseOverUi: boolean;
   currentZone: string | undefined;
+  rootState: RootState | undefined;
 
   // cameras
   private camera: PerspectiveCamera | undefined;
@@ -27,6 +33,14 @@ class SceneStore {
 
   // zone
   loadedZoneNames: string[];
+
+  // models
+  buildingsGLTF: BuildingsGLTF;
+
+  // composer
+  composer: any;
+  outlinePass: OutlinePass | undefined;
+  selectedObjects: any[];
 
   constructor() {
     this.mainPlanes = [];
@@ -46,7 +60,19 @@ class SceneStore {
       ArrowDown: false
     };
     this.loadedZoneNames = [];
+    this.buildingsGLTF = {};
+    this.composer = undefined;
+    this.outlinePass = undefined;
+    this.selectedObjects = [];
   }
+
+  setBuildingGLTF = (keyName: string, model: Group) => {
+    this.buildingsGLTF[keyName] = model;
+  };
+
+  getBuildingGLTF = (keyName: string) => {
+    return this.buildingsGLTF[keyName];
+  };
 
   addMainPlane = (plane: Mesh) => {
     this.mainPlanes.push(plane);
@@ -78,6 +104,32 @@ class SceneStore {
       cameraParent: this.cameraParent,
       lookAtTarget: this.lookAtTarget
     };
+  };
+
+  addSelectedObject(object: any) {
+    this.selectedObjects = [];
+    this.selectedObjects.push(object);
+  }
+
+  onPointerMove = () => {
+    if (this.rootState) {
+      const {raycaster, mouse, camera, scene} = this.rootState;
+      console.log('onPointerMove', this.rootState);
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(scene, true);
+      if (intersects.length > 0) {
+        const selectedObject = intersects[0].object;
+        this.addSelectedObject(selectedObject);
+        this.outlinePass.selectedObjects = this.selectedObjects;
+        console.log(this.selectedObjects);
+      } else {
+        this.outlinePass.selectedObjects = [];
+      }
+    }
+  };
+
+  copyState = (rootState: RootState) => {
+    this.rootState = rootState;
   };
 }
 
