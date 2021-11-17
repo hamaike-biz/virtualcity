@@ -1,7 +1,7 @@
 import React, {useRef, useState, useEffect, FC, MouseEventHandler} from 'react';
 import {useDispatch} from 'react-redux';
 import {requestPurchaseLand} from '../../../actions/land/action';
-import {OrbitControls, Stats} from '@react-three/drei';
+import {OrbitControls, Stats, MapControls} from '@react-three/drei';
 import {
   Canvas,
   useThree,
@@ -59,10 +59,10 @@ const CellSelector: FC<PlaneProps> = ({sceneStore}) => {
 
   useEffect(() => {
     document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('pointerup', onPointerUp);
   }, []);
 
   const onPointerDown = (e: PointerEvent) => {
-    const mouse = getMouseVector(e);
     const planes = sceneStore.getMainPlanes();
     raycaster.setFromCamera(mouse, sceneStore.mainCamera);
     const intersects = raycaster.intersectObjects(planes, false);
@@ -78,15 +78,49 @@ const CellSelector: FC<PlaneProps> = ({sceneStore}) => {
         planes.splice(planes.indexOf(intersect.object), 1);
       } else if (intersect.face) {
         console.log('intersect.point', intersect.point);
+        const intersectPoint = intersect.point;
+        const pointerDownFixedPoint = getFixedPoint(intersectPoint);
+        console.log(pointerDownFixedPoint);
+        sceneStore.setPointerDownFixedPoint(pointerDownFixedPoint);
         const mats = getPlacingPlaneMaterials();
         const voxel = new Mesh(mats.geometry, mats.material);
-        voxel.position.copy(intersect.point).add(intersect.face.normal);
+        voxel.position.copy(intersectPoint).add(intersect.face.normal);
         voxel.position.divideScalar(1).floor().multiplyScalar(1).addScalar(0.5);
         voxel.position.y = 0.001;
         scene.add(voxel);
         sceneStore.addMainPlane(voxel);
       }
     }
+  };
+
+  const onPointerUp = (e: PointerEvent) => {
+    console.log('UP');
+    const planes = sceneStore.getMainPlanes();
+    raycaster.setFromCamera(mouse, sceneStore.mainCamera);
+    const intersects = raycaster.intersectObjects(planes, false);
+    if (intersects.length > 0 && !sceneStore.isMouseOverUi) {
+      const intersect = intersects[0];
+
+      if (intersect.face) {
+        console.log('intersect.point', intersect.point);
+        const intersectPoint = intersect.point;
+        const pointerUpFixedPoint = getFixedPoint(intersectPoint);
+        console.log(pointerUpFixedPoint);
+        const pointerDownPos = sceneStore.getPointerDownFixedPoint();
+      }
+    }
+  };
+
+  const getFixedPoint = (intersectPoint: Vector3) => {
+    const pointerDownFixedPoint = new Vector3();
+    pointerDownFixedPoint.copy(intersectPoint);
+    pointerDownFixedPoint.set(
+      Number(pointerDownFixedPoint.x.toFixed(2)),
+      Number(pointerDownFixedPoint.y.toFixed(2)),
+      Number(pointerDownFixedPoint.z.toFixed(2))
+    );
+    // console.log('pointerDownFixedPoint', pointerDownFixedPoint);
+    return pointerDownFixedPoint;
   };
 
   useEffect(() => {
@@ -139,7 +173,7 @@ const Camera = ({sceneStore}: {sceneStore: SceneStore}) => {
       0.3,
       1000
     );
-    mainCamera.position.set(10, 17.5, 30);
+    mainCamera.position.set(20, 16, 30);
     set({camera: mainCamera});
     sceneStore.mainCamera = mainCamera;
   }, []);
@@ -270,7 +304,7 @@ const LandCanvas = () => {
         <ambientLight intensity={1} />
         <pointLight position={[10, 10, 10]} />
         <gridHelper args={[100, 100]} />
-        <OrbitControls />
+        <MapControls />
         <fog attach="fog" args={['white', 20, 50]} />
         <CellSelector sceneStore={sceneStoreRef.current} />
         <Camera sceneStore={sceneStoreRef.current} />

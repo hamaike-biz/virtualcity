@@ -42,6 +42,9 @@ class SceneStore {
   outlinePass: OutlinePass | undefined;
   selectedObjects: any[];
 
+  // pointers
+  pointerDownPos: any;
+
   constructor() {
     this.mainPlanes = [];
     this.frameCount = 0;
@@ -64,7 +67,16 @@ class SceneStore {
     this.composer = undefined;
     this.outlinePass = undefined;
     this.selectedObjects = [];
+    this.pointerDownPos = undefined;
   }
+
+  setPointerDownFixedPoint = (pos: any) => {
+    this.pointerDownPos = pos;
+  };
+
+  getPointerDownFixedPoint = () => {
+    return this.pointerDownPos;
+  };
 
   setBuildingGLTF = (keyName: string, model: Group) => {
     this.buildingsGLTF[keyName] = model;
